@@ -1,0 +1,22 @@
+{
+  "name": "igrowflora",
+  "description": "An IoT solution for automated balcony irrigation",
+  "version": "0.0.1",
+  "keywords": [
+    "IoT"
+  ],
+  "dependencies": {
+    "node-schedule": "^1.2.3",
+    "os": "^0.1.1",
+    "syslog-client": "^1.1.0",
+    "winston": "^2.3.1",
+    "winston-rsyslog2": "0.0.5"
+  },
+  "main": "moscaMQTTServer.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Marc Szymanski",
+  "license": "ISC"
+}

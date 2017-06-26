@@ -1,0 +1,21 @@
+<html>
+  <head>
+    <script src="/node_modules/mqtt/dist/mqtt.js"></script>
+  </head>
+  <body>
+    <script>
+      var client = mqtt.connect();
+
+      client.subscribe("nodemcu/soilMoisture");
+
+      client.on("message", function(topic, payload) {
+      alert([topic, payload].join(": "));
+      client.end();
+      });
+
+      client.publish("configuration/nodemcu", "hello world!");
+    </script>
+    hello world!
+  </body>
+</html>
+

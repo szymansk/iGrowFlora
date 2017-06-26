@@ -1,0 +1,116 @@
+{
+	"MQTT": {
+		"server": "192.168.178.35",
+		"moscaSettings": {
+			"port": 1883,
+			"backend": {
+				"type": "mongo",
+				"url": "mongodb://localhost:27017/mqtt",
+				"pubsubCollection": "ascoltatori",
+				"mongo": {}
+			},
+			"persistence": {
+				"factory": "mosca.persistence.Mongo",
+				"url": "mongodb://localhost:27017/mqtt"
+			},
+			"http": {
+				"port": 3000,
+				"bundle": true,
+				"static": "./"
+			}
+		}
+	},
+	"valves": {
+		"topic": "valve",
+		"open": 1,
+		"close": 0,
+		"0": {
+			"GPIO": 12,
+			"sensorID": 1711063,
+			"threshold": 600,
+			"controller": "timer" // or "moisture"
+		},
+		"1": {
+			"GPIO": 16,
+			"sensorID": 1443089,
+			"threshold": 600,
+			"controller": "timer" // or "moisture"
+		},
+		"2": {
+			"GPIO": 20,
+			"sensorID": 2336994,
+			"threshold": 500,
+			"controller": "timer" // or "moisture"
+		},
+		"3": {
+			"GPIO": 21,
+			"sensorID": 2272926,
+			"threshold": 450,
+			"controller": "timer" // or "moisture"
+		},
+		"MOCKUP": {
+			"GPIO": 9999,
+			"sensorID": 2329074,
+			"threshold": 500,
+			"controller": "timer" // or "moisture"
+		}
+	},
+	"controller": {
+		"topic": "controller",
+		"threshold": 600,
+		"timeout": 10000,
+		"timer": {
+			"topic": "timer",
+			"msgTemplate": {
+				"intervall": "", // interval in ms
+				"volume": "", // milliliter in ms
+				"valve": ""
+			}
+		},
+		"volume": {
+			"topic": "volume",
+			"milliliterPerMS": 0.0323,
+			"msgTemplate": {
+				"intervall": "", // interval in ms
+				"volume": "", // milliliter in ms
+				"valve": ""
+			}
+		}
+	},
+	"sensor": {
+		"topic": "nodemcu",
+		"moisture": {
+			"topic": "soilMoisture"
+		},
+		"msgTemplate": {
+			"ID": "",
+			"timeStamp": {
+				"sec": "",
+				"usec": ""
+			},
+			"sensorReadings": {
+				"soilmoisture": ""
+			}
+		}
+	},
+	"cronTab": {
+		"0": {
+			"valve": [
+				0,
+				1,
+				2,
+				3
+			],
+			"volume": 200, // milliliter
+			"cronJob": {
+				"second": 0, 	//second (0 - 59, OPTIONAL)
+				"minute": 0, 	//minute (0 - 59)
+				"hour": 8		//hour (0-24)
+				//"date": 0,		// ??? not documented -> transform to date obj
+				//"month": ,		//month (1 - 12)
+				//"year": ,		//
+				//"dayOfWeek": 0 	//day of week (0 - 7) (0 or 7 is Sun)
+			}
+		}
+	}
+}

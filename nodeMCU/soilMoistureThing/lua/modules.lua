@@ -1,0 +1,19 @@
+-- file : modules.lua
+-- keep track on all needed modules
+-- 
+-- adc
+-- bmp085
+-- file
+-- gpio
+-- mqtt
+-- net
+-- node
+-- rtcfifo
+-- rtcmem
+-- rtctime
+-- sjson
+-- tmr
+-- uart
+-- wifi
+-- tls
+-- SNTP
