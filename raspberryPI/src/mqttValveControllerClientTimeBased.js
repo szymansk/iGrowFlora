@@ -26,7 +26,9 @@ var soilMoistureControl = config.get('controller');
 function closeValve(valve) {
 
   try {
-    client.publish(valves.topic + "/closed", JSON.stringify(valve),
+    client.publish(valves.topic + "/closed",
+      JSON.stringify(valve),
+      { qos: 1 },
       function (err) {
       });
   } catch (e) {
@@ -61,7 +63,9 @@ client.on('message', function (topic, message) {
 
     console.log("msg: " + msg + " : " + JSON.stringify(msg));
 
-    client.publish(valves.topic + "/opened", JSON.stringify(msg),
+    client.publish(valves.topic + "/opened",
+      JSON.stringify(msg),
+      { qos: 1 },
       function (err) {
       });
 
@@ -85,7 +89,9 @@ client.on('message', function (topic, message) {
       intervall: jsonContent.volume / controller.volume.milliliterPerMS
     }
 
-    client.publish(valves.topic + "/opened", JSON.stringify(msg),
+    client.publish(valves.topic + "/opened",
+      JSON.stringify(msg),
+      { qos: 1 },
       function (err) {
       });
 

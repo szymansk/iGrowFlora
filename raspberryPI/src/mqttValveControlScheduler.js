@@ -8,19 +8,28 @@ var controller = config.get("controller");
 var cronTab = config.get("cronTab");
 
 
-function irrigate(valves, volume) {
-    for (var item in valves) {
+function irrigate(valve, volume) {
+ //   for (var item in valves) {
+        var dateTime = require('node-datetime');
+        var dt = dateTime.create();
+        var formatted = dt.format('Y-m-d H:M:S');
+
         var msg = {
-            valve: item,
-            volume: volume
+            valve: valve,
+            volume: volume,
+            timeStamp: formatted
         }
+
+        console.log(formatted + ": " + JSON.stringify(msg));
+
         client.publish(controller.topic + "/" + controller.volume.topic,
             JSON.stringify(msg),
+            { qos: 2 },
             function (err) {
-                console.log("error: " + JSON.stringify(msg));
+                console.log(JSON.stringify(msg));
             }
         );
-    }
+   // }
 }
 
 client.on('connect', function () {
@@ -28,15 +37,12 @@ client.on('connect', function () {
     client.publish('presence', 'Hello mqtt');
 
     for (var item in cronTab) {
+        console.log(cronTab[item])
         if (cronTab[item].hasOwnProperty('cronJob')) {
 
             var j = schedule.scheduleJob(cronTab[item].cronJob,
-                function () {
-                    // TODO: transform date string to date object
-                    irrigate(cronTab[item].valve, cronTab[item].volume);
-                    console.log("set cronJob: " + cronTab[item])
-                });
-
+                irrigate.bind(null,cronTab[item].valve,cronTab[item].volume)
+            );
         }
     }
 
