@@ -9,27 +9,27 @@ var cronTab = config.get("cronTab");
 
 
 function irrigate(valve, volume) {
- //   for (var item in valves) {
-        var dateTime = require('node-datetime');
-        var dt = dateTime.create();
-        var formatted = dt.format('Y-m-d H:M:S');
 
-        var msg = {
-            valve: valve,
-            volume: volume,
-            timeStamp: formatted
+    var dateTime = require('node-datetime');
+    var dt = dateTime.create();
+    var formatted = dt.format('Y-m-d H:M:S');
+
+    var msg = {
+        valve: valve,
+        volume: volume,
+        timeStamp: formatted
+    }
+
+    console.log(formatted + ": " + JSON.stringify(msg));
+
+    client.publish(controller.topic + "/" + controller.volume.topic,
+        JSON.stringify(msg),
+        { qos: 2 },
+        function (err) {
+            console.log(JSON.stringify(msg));
         }
+    );
 
-        console.log(formatted + ": " + JSON.stringify(msg));
-
-        client.publish(controller.topic + "/" + controller.volume.topic,
-            JSON.stringify(msg),
-            { qos: 2 },
-            function (err) {
-                console.log(JSON.stringify(msg));
-            }
-        );
-   // }
 }
 
 client.on('connect', function () {
@@ -41,7 +41,7 @@ client.on('connect', function () {
         if (cronTab[item].hasOwnProperty('cronJob')) {
 
             var j = schedule.scheduleJob(cronTab[item].cronJob,
-                irrigate.bind(null,cronTab[item].valve,cronTab[item].volume)
+                irrigate.bind(null, cronTab[item].valve, cronTab[item].volume)
             );
         }
     }
