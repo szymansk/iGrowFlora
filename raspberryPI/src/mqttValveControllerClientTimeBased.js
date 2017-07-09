@@ -9,6 +9,9 @@ var valves = config.get("valves");
 var controller = config.get("controller");
 var sensor = config.get("sensor");
 
+var mean_value = [400,400,400,400];
+var alpha = 0.97
+
 for (var item in valves) {
   if (valves[item].hasOwnProperty('GPIO')) {
     console.log(valves[item].GPIO)
@@ -40,7 +43,7 @@ function switchValve(valve, state, msg = {
     action = valves.close   
   }
 
-  //console.log(valve + " " + state)
+//  console.log(valve + " " + state)
 
   try {
     client.publish(valves.topic + top,
@@ -52,6 +55,7 @@ function switchValve(valve, state, msg = {
     console.log(e);
   }
 
+    //console.log(valve)
   valves[valve].ctr.write(action,
     function (err) {
       //console.log(err)
@@ -76,13 +80,13 @@ client.on('message', function (topic, message) {
   //console.log(topic + " " +message)
 
   var splitTopic = topic.split("/")
-  var jsonContent = JSON.parse(message);
 
 
   // timer control
   var depth = 0
   if (splitTopic[depth] == controller.topic) {
     depth++
+    var jsonContent = JSON.parse(message);
 
     if (splitTopic[depth] == controller.timer.topic) {
 
@@ -108,7 +112,9 @@ client.on('message', function (topic, message) {
     }
   } // soil moisture control
   else if (splitTopic[depth] = sensor.topic) {
-    depth++
+      var jsonContent = JSON.parse(message);
+      
+      depth++
     if (splitTopic[depth] == sensor.moisture.topic) {
 
       for (var item in valves) {
@@ -124,10 +130,11 @@ client.on('message', function (topic, message) {
           }
 
           if (item != "MOCKUP") {
-            if (jsonContent.sensorReadings.soilMoisture <= threshold) {
+//            if (jsonContent.sensorReadings.soilMoisture <= threshold) {
+	      if (mean_value[Number(item)] <= threshold) {
 
               if (valves[item].energySource == "line") {
-                switchValve(item.open)
+                  switchValve(Number(item), "open")
               } else {
                 var msg = {
                   valve: Number(item),
@@ -146,6 +153,7 @@ client.on('message', function (topic, message) {
               }
             }
           }
+	    mean_value[Number(item)] = (alpha)*mean_value[Number(item)] + (1-alpha)*jsonContent.sensorReadings.soilMoisture 
           console.log("%d %s %d %d %d %d %d",
             jsonContent.timeStamp.sec,
             item,
@@ -154,7 +162,8 @@ client.on('message', function (topic, message) {
             jsonContent.sensorReadings.temperature,
             jsonContent.voltage,
             valvestate,
-            threshold)
+		      threshold,
+		      mean_value[Number(item)])
         }
       }
     }
