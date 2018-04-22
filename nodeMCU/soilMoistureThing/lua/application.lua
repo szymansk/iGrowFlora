@@ -1,5 +1,7 @@
 -- file : application.lua
 local module = {}  
+--local chirp = require("chirp")
+
 m = nil
 
 local mqtt_data = {}
@@ -18,27 +20,33 @@ end
 local function send_soilMoisture() 
     mqtt_data.ID = config.ID;
 
-    num_meas = 100 --todo make configurable
-    meas = 0
-    found = 0
+    num_meas = config.numMeas --todo make configurable
+    mqtt_data.sensorReadings.soilMoisture = 0
+    mqtt_data.sensorReadings.temperature = 0
+    mqtt_data.voltage = 0
+
     for i=1,num_meas do
-        meas = meas + adc.read(0);
-        found = i
+        mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture + chirp.read_moisture()
+        mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature + chirp.read_temperature()
+        mqtt_data.voltage                     = mqtt_data.voltage + adc.readvdd33()               
     end
-    mqtt_data.sensorReadings.soilMoisture = meas/num_meas;
+    mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture/num_meas;
+    mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature/num_meas;
+    mqtt_data.voltage                     = mqtt_data.voltage/num_meas;
+            
+    mqtt_data.timeStamp.sec, mqtt_data.timeStamp.usec = rtctime.get();
     
     dat = sjson.encode(mqtt_data);    
-    print(dat);
-    
-    mqtt_data.timeStamp.sec, mqtt_data.timeStamp.usec = rtctime.get();
-    m:publish(config.ENDPOINT .. "soilMoisture", dat,0,0)
+    print(dat)
+    m:publish(config.ENDPOINT .. "soilMoisture/" .. config.ID, dat,0,0)
 end
 
 -- Sends my id to the broker for registration
 local function register_myself()  
-    m:subscribe(config.ENDPOINT .. config.ID,0,function(conn)
-        print("Successfully subscribed to data endpoint")
-    end)
+    m:subscribe("configuration/nodemcu",1,
+        function(conn)
+            print("Successfully subscribed to data endpoint")
+        end)
 end
 
 local function handle_connection_error(errno)
@@ -71,44 +79,88 @@ local function handle_connection_error(errno)
 end
 
 
-local function connect_and_fire() 
-   m:close();
-    m:connect(config.HOST, config.PORT, 0, 0, 
-        function(con) 
-            --register_myself()
-            send_soilMoisture();
-        end,
-        function(client, reason)
-            print("no connection to with reason " .. handle_connection_error(reason));
-        end) 
-    m:close();
-end
-
 local function subscriptionHandler(conn, topic, data) 
-
+ 
     if topic == "configuration/nodemcu" then
-         dat = sjson.decode(data)
+         --dat = sjson.decode(data)
+         print(topic .. ": " .. data)
+
+         --val = sjson.encode(data)
          
+        -- print(dat)
     elseif data ~= nil then
       print(topic .. ": " .. data)
     end
 
       
 end
+
+
+local function pub_off() 
+    tmr.stop(6); -- turn auto reconnection timeour off
+end
+
+local function goDsleep() 
+
+    dat = {}
+    dat.ID = config.ID
+    dat.deepSleepUS = config.deepSleepUS
+    dat.timeStamp = {}
+    dat.timeStamp.sec = 0
+    dat.timeStamp.usec = 0
+
+    dat.timeStamp.sec, dat.timeStamp.usec = rtctime.get();
+    
+    m:publish(config.ENDPOINT .. "soilMoisture/deepSleep", sjson.encode(dat),0,0)
+    rtctime.dsleep(config.deepSleepUS)
+end
+
+local function pub_on()
+
+    if not config.deepSleep then
+        tmr.alarm(6, config.repeatMeasEveryMS, tmr.ALARM_AUTO, send_soilMoisture ) -- turn pub on
+    else
+        tmr.alarm(6, config.repeatMeasEveryMS, tmr.ALARM_AUTO, send_soilMoisture ) -- turn pub on
+       --send_soilMoisture()
+        tmr.alarm(5, config.repeatMeasEveryMS * config.measBeforeDS + config.repeatMeasEveryMS/2, tmr.ALARM_SINGLE, goDsleep ) -- turn pub on
+    end 
+end
+
+local function init(con) 
+    tmr.stop(5); -- turn auto reconnection timeour off
+    register_myself();  -- register to topics
+    -- And then pings each 1000 milliseconds
+    pub_off();
+    pub_on();
+end
+
+local function reconnect (client)
+    pub_off(); -- turn pub off
+    client:close();
+    client:connect(config.HOST, config.PORT, 0, 0, 
+        init, -- sub and fire pub
+        function(client, reason)
+            print("no connection to with reason " .. handle_connection_error(reason));
+            tmr.alarm(5, 10*1000, tmr.ALARM_AUTO, -- enable auto reconnection
+                function () 
+                    reconnect(client);
+                end)
+         end)
+end
     
 local function mqtt_start()  
-    m = mqtt.Client(config.ID, 120)
+    m = mqtt.Client(config.ID, 120,config.mqtt_cfg.user, config.mqtt_cfg.password)
     -- register message callback beforehand
-    m:on("message", subscriptionHandler)
-    
+    m:on("message", subscriptionHandler)    
+    m:on("offline", reconnect)
 
-    --TODO here we need to register a configuration message handler
- 
     -- Connect to broker
-    -- And then pings each 1000 milliseconds
-    tmr.stop(6)
-    tmr.alarm(6, 1000, tmr.ALARM_AUTO, connect_and_fire)
-
+   m:connect(config.HOST, config.PORT, 0, 0, 
+        init,
+        function(client, reason)
+            print("no connection to with reason " .. handle_connection_error(reason));
+            reconnect(client); -- auto reconnect
+        end) 
 end
 
 function module.start()  
