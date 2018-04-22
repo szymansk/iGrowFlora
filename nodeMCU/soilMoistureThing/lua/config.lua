@@ -10,6 +10,9 @@ module.station_cfg.save=true
 module.HOST = "192.168.178.35"  -- raspi
 module.PORT = 1883  
 module.ID = node.chipid()
+module.mqtt_cfg = {}
+module.mqtt_cfg.user = "pi"
+moduel.mqtt_cfg.password = "vulam,."
 
 module.deppSleepUS = 60*1000*1000 -- usec
 
