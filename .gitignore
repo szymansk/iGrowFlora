@@ -8,8 +8,10 @@ nodeMCU/soilMoistureThingMockup/.DS_Store
 nodeMCU/.DS_Store
 
 # Directories potentially created on remote AFP share
-**/.AppleDB
+/.AppleDB
 **/.AppleDesktop
 **/Network Trash Folder
 **/Temporary Items
 **/.apdisk
+.Parent
+nodeMCU/.DS_Store

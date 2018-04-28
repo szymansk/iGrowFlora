@@ -2,14 +2,14 @@ var mqtt = require('mqtt');     // for the MQTT-client
 var onoff = require('onoff');   // for turning on/off the valves
 var config = require('config'); // for simple configuration
 
-var client = mqtt.connect('mqtt://' + config.get('MQTT.server'));
+var client = mqtt.connect('mqtt://' + config.get('MQTT.server'), { "username":config.get('MQTT.username'), "password":config.get('MQTT.password')});
 var Gpio = onoff.Gpio;
 
 var valves = config.get("valves");
 var controller = config.get("controller");
 var sensor = config.get("sensor");
 
-var mean_value = [400,400,400,400];
+var mean_value = [0,0,0,0];
 var alpha = 0.97
 
 for (var item in valves) {
@@ -153,7 +153,11 @@ client.on('message', function (topic, message) {
               }
             }
           }
-	    mean_value[Number(item)] = (alpha)*mean_value[Number(item)] + (1-alpha)*jsonContent.sensorReadings.soilMoisture 
+	    if ( mean_value[Number(item)] == 0 ) {
+		mean_value[Number(item)] = jsonContent.sensorReadings.soilMoisture
+	    } else {
+		mean_value[Number(item)] = (alpha)*mean_value[Number(item)] + (1-alpha)*jsonContent.sensorReadings.soilMoisture
+	    }
           console.log("%d %s %d %d %d %d %d",
             jsonContent.timeStamp.sec,
             item,

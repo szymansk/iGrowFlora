@@ -1,8 +1,12 @@
-var mqtt = require('mqtt');     // for the MQTT-client
+//node v7.10.1
+
+ar mqtt = require('mqtt');     // for the MQTT-client
 var config = require('config'); // for simple configuration
 var schedule = require('node-schedule');
 
-var client = mqtt.connect('mqtt://' + config.get('MQTT.server'));
+var client = mqtt.connect('mqtt://' + config.get('MQTT.server'), 
+                        { "username":config.get('MQTT.username'), 
+                          "password":config.get('MQTT.password')});
 var controller = config.get("controller");
 
 var cronTab = config.get("cronTab");
@@ -34,7 +38,7 @@ function irrigate(valve, volume) {
 
 client.on('connect', function () {
     console.log("connected...");
-    client.publish('presence', 'Hello mqtt');
+    client.publish('presence', 'valve control scheduler is online!');
 
     for (var item in cronTab) {
         console.log(cronTab[item])

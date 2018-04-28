@@ -68,6 +68,7 @@ function module.start()
   wifi.sta.getap(wifi_start);
   print("Configuring adc ...");
   adc_start();
+  chirp.setup(config.chirp.sda, config.chirp.scl)
 end
 
 return module  

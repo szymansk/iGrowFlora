@@ -2,7 +2,7 @@ var mqtt = require('mqtt');     // for the MQTT-client
 var onoff = require('onoff');   // for turning on/off the valves
 var config = require('config'); // for simple configuration
 
-var client = mqtt.connect('mqtt://' + config.get('MQTT.server'));
+var client = mqtt.connect('mqtt://' + config.get('MQTT.server'), { "username":config.get('MQTT.username'), "password":config.get('MQTT.password')});
 var Gpio = onoff.Gpio;
 
 var valves = config.get("valves");

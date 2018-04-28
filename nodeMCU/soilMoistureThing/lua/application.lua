@@ -75,6 +75,8 @@ local function handle_connection_error(errno)
         return "The broker refused the specified username or password."
     elseif errno ==mqtt.CONNACK_REFUSED_NOT_AUTHORIZED then
         return "The username is not authorized."
+    else 
+        return errno
     end
 end
 
@@ -149,11 +151,24 @@ local function reconnect (client)
 end
     
 local function mqtt_start()  
-    m = mqtt.Client(config.ID, 120,config.mqtt_cfg.user, config.mqtt_cfg.password)
+    m = mqtt.Client(config.ID, 120, config.mqtt_cfg.user, config.mqtt_cfg.password)
+
+    --config.ID = node.chipid()
+    --m = mqtt.Client(config.ID, 120, 'pi', 'vulam,.')
     -- register message callback beforehand
     m:on("message", subscriptionHandler)    
     m:on("offline", reconnect)
 
+
+    print("====================================");
+    print("Connecting MQTT:");
+    print("ID:   " .. config.ID);
+    print("HOST: " .. config.HOST);
+    print("PORT: " .. config.PORT);
+    print("USER: " .. config.mqtt_cfg.user);
+    print("PASS: " .. config.mqtt_cfg.password);
+    
+    
     -- Connect to broker
    m:connect(config.HOST, config.PORT, 0, 0, 
         init,

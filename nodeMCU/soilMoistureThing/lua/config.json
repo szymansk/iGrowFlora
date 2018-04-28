@@ -2,6 +2,10 @@
 "deepSleepUS":600000000,
 "HOST":"192.168.178.35",
 "PORT":1883,
+"mqtt_cfg":{
+    "user":"pi",
+    "password":"vulam,."
+},
 "measBeforeDS":10,
 "ENDPOINT":"nodemcu/",
 "config_file":"config.json",

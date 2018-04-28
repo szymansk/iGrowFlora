@@ -9,14 +9,24 @@ module.station_cfg.save=true
 
 module.HOST = "192.168.178.35"  -- raspi
 module.PORT = 1883  
+module.ID = 0
 module.ID = node.chipid()
+
 module.mqtt_cfg = {}
 module.mqtt_cfg.user = "pi"
-moduel.mqtt_cfg.password = "vulam,."
+module.mqtt_cfg.password = "vulam,."
 
 module.deppSleepUS = 60*1000*1000 -- usec
 
 module.SNTP = {"129.70.132.33", "134.119.8.130", "131.234.137.63", "5.9.80.113"}
 
-module.ENDPOINT = "nodemcu/"  
+module.ENDPOINT = "nodemcu/" 
+
+module.chirp        = {}
+module.chirp.scl    = 4
+module.chirp.addr   = 32
+module.chirp.sda    = 2
+module.numMeas = 1
+
+module.repeatMeasEveryMS = 60000
 return module 
