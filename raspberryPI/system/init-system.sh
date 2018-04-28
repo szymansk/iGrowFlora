@@ -1,5 +1,8 @@
 #!/bin/sh 
 
+# change hostname 
+sudo hostname -b raspi
+
 ### setting up docker ###
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends apt-transport-https \
@@ -8,14 +11,18 @@ sudo apt-get install -y --no-install-recommends apt-transport-https \
 sudo curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 sudo apt-key fingerprint 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 
-deb https://download.docker.com/linux/debian jessie stable
+#deb https://download.docker.com/linux/debian jessie stable
+
+echo "deb [arch=armhf] https://download.docker.com/linux/debian \
+     $(lsb_release -cs) stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list
 
 sudo apt-get update
 sudo apt-get -y install docker-ce
 
 sudo systemctl start docker
 #oder
-sudo service docker start
+#sudo service docker start
 
 ### setting up rabbitMQ in docker ###
 HB_RABBITMQ_DEFAULT_USER=pi
