@@ -1,7 +1,7 @@
 #!/bin/sh 
 
 # change hostname 
-sudo hostname -b raspi
+#sudo hostname -b raspi
 
 ### setting up docker ###
 sudo apt-get update
@@ -21,8 +21,6 @@ sudo apt-get update
 sudo apt-get -y install docker-ce
 
 sudo systemctl start docker
-#oder
-#sudo service docker start
 
 ### setting up rabbitMQ in docker ###
 HB_RABBITMQ_DEFAULT_USER=pi
@@ -39,6 +37,10 @@ sudo docker build --build-arg HB_RABBITMQ_DEFAULT_USER=$HB_RABBITMQ_DEFAULT_USER
 sudo docker rm -f rabbitmq; 
 sudo docker run  -d --restart unless-stopped -p 5672:5672 -p 15672:15672 -p 1883:1883 --name rabbitmq sejnub/rabbitmq 
 
+# getting iGrowFlora
+cd ~/
+git clone https://github.com/szymansk/iGrowFlora.git
+
 ### setting up node-red in docker ###
 cd ~/
 git clone https://github.com/node-red/node-red-docker.git
@@ -47,7 +49,11 @@ cd node-red-docker
 # Build it with the desired tag
 sudo docker build -f rpi/Dockerfile -t nodered/node-red-docker:rpi-alexa .
 
-sudo docker run -d --restart unless-stopped  --net=host --cap-add SYS_RAWIO --device /dev/mem --privileged -p 1880:1880  -v ~/node-red-data:/data --link rabbitmq:broker --name nodered/node-red-docker:rpi-alexa
+sudo docker run -d --restart unless-stopped --cap-add SYS_RAWIO --device /dev/gpiomem --privileged -p 1880:1880  -v ~/iGrowFlora/node-red-data:/data --link rabbitmq:broker --name nodered/node-red-docker:rpi-alexa
 
-sudo docker run -d --restart unless-stopped  --net=host --cap-add SYS_RAWIO --device /dev/mem --privileged -p 1880:1880  -v ~/node-red-data:/data --link rabbitmq:broker --name mynodered mynodered:noderedIGrowFlora 
+sudo docker run -d --restart unless-stopped --cap-add SYS_RAWIO --device /dev/gpiomem --privileged -v ~/iGrowFlora/raspberryPI/src/config:/config -v ~/iGrowFlora/raspberryPI/src:/data --link rabbitmq:broker --name nodeGrow hypriot/rpi-node node /data/mqttValveControllerClient.js
+  
+
+
+
 
