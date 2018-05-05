@@ -41,6 +41,12 @@ sudo docker run  -d --restart unless-stopped -p 5672:5672 -p 15672:15672 -p 1883
 cd ~/
 git clone https://github.com/szymansk/iGrowFlora.git
 
+### setting up sqlite3
+cd ~/
+sudo docker build -f iGrowFlora/sqlite3-docker/Dockerfile -t sqlite3:rpi .
+sudo docker run -d -v ~/sqlite3-db/:/db --name sqlite3db sqlite3:rpi 
+
+
 ### setting up node-red in docker ###
 cd ~/
 git clone https://github.com/node-red/node-red-docker.git
