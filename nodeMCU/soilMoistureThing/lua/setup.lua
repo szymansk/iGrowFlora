@@ -4,11 +4,15 @@ local module = {}
 -- setup SNTP for the RTC timestamp
 local function SNTP_start() 
     -- Single shot sync time with a server on the local network.
+    
     print(config.SNTP)
     sntp.sync(config.SNTP,
         function(sec, usec, server, info)
             rtctime.set(sec, usec);
-            print('SNTP sync', sec, usec, server)
+            
+            tm = rtctime.epoch2cal(rtctime.get())
+            print('SNTP sync', server)
+            print(string.format("UTC: %04d/%02d/%02d %02d:%02d:%02d", tm["year"], tm["mon"], tm["day"], tm["hour"], tm["min"], tm["sec"]))
             
             app.start()
         end,
@@ -55,18 +59,60 @@ end
 
 -- configure adc
 local function adc_start()
-    if adc.force_init_mode(adc.INIT_ADC)
+    if adc.force_init_mode(adc.INIT_VDD33)
     then
         node.restart()
         return -- don't bother continuing, the restart is scheduled
     end
 end
 
+function module.read_config()
+    files = file.list()
+    if files["config.json"] then
+        print("Config file exists")
+    else
+        print("Config file does NOT exist")
+        return nil        
+    end
+    config_file = file.open("config.json","r")
+    conf = config_file.read()
+
+    print(conf)
+
+    var = sjson.decode(conf)
+    config_file.close()
+    
+    return var
+
+end
+
+function module.write_config()
+    files = file.list()
+    if files[config.config_file] then
+        print("Config file exists")
+    else
+        print("Config file does NOT exist")
+        return -1        
+    end
+
+    conf_file = file.open(config.config_file, "w+")
+
+    conf_file.write(string.gsub(sjson.encode(config),",",",\n"))
+
+    conf_file.close()
+    
+end
+
 function module.start()  
+  val = module.read_config();
+  if val ~= nil then
+    config = val
+  end
+
   print("Configuring Wifi ...");
   wifi.setmode(wifi.STATION);
   wifi.sta.getap(wifi_start);
-  print("Configuring adc ...");
+  print("Configuring adc as battery monitor...");
   adc_start();
   chirp.setup(config.chirp.sda, config.chirp.scl)
 end

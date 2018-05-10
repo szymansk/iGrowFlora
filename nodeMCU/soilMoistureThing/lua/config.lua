@@ -28,5 +28,5 @@ module.chirp.addr   = 32
 module.chirp.sda    = 2
 module.numMeas = 1
 
-module.repeatMeasEveryMS = 60000
+module.repeatMeasEveryMS = 1000
 return module 
