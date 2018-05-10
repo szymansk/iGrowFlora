@@ -4,14 +4,6 @@ local module = {}
 -- setup SNTP for the RTC timestamp
 local function SNTP_start() 
     -- Single shot sync time with a server on the local network.
-    _, reset_reason = node.bootreason()
-    if reset_reason == 5 then 
-        print("Wake-up from deep sleep rtc should be fine.") 
-        rtc_tm = rtctime.get()
-        tm = rtctime.epoch2cal(rtc_tm)
-        print(string.format("UTC: %04d/%02d/%02d %02d:%02d:%02d", tm["year"], tm["mon"], tm["day"], tm["hour"], tm["min"], tm["sec"]))
-        if rtc_tm ~= 0 then return end-- we do not need to contact the NTP server
-    end
     
     print(config.SNTP)
     sntp.sync(config.SNTP,

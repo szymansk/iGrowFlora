@@ -17,18 +17,23 @@ local function send_ping()
 end
 
 -- Sends a soil moisture value to the broker
-local function send_soilMoisture() 
+local function send_soilMoisture()
+    local i2cError = false; 
     mqtt_data.ID = config.ID;
 
-    num_meas = config.numMeas --todo make configurable
+    local num_meas = config.numMeas --todo make configurable
     mqtt_data.sensorReadings.soilMoisture = 0
     mqtt_data.sensorReadings.temperature = 0
     mqtt_data.voltage = 0
 
     for i=1,num_meas do
-        mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture + chirp.read_moisture()
-        mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature + chirp.read_temperature()
-        mqtt_data.voltage                     = mqtt_data.voltage + adc.readvdd33()               
+        moist = chirp.read_moisture()
+        temp = chirp.read_temperature()
+        volt = adc.readvdd33()
+        if ((moist == -1) or (temp == -1)) then i2cError = true end
+        mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture + moist
+        mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature + temp
+        mqtt_data.voltage                     = mqtt_data.voltage + volt               
     end
     mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture/num_meas;
     mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature/num_meas;
@@ -36,22 +41,22 @@ local function send_soilMoisture()
             
     mqtt_data.timeStamp.sec, mqtt_data.timeStamp.usec = rtctime.get();
     
-    dat = sjson.encode(mqtt_data);    
+    local dat = sjson.encode(mqtt_data);    
     print(dat)
-    m:publish(config.ENDPOINT .. "soilMoisture/" .. config.ID, dat,0,0)
+    if (i2cError == false) then
+        m:publish(config.ENDPOINT .. "soilMoisture/" .. config.ID, dat,0,0)
+    end
 end
 
 -- Sends my id to the broker for registration
 local function register_myself()  
-    m:subscribe("configuration/nodemcu",1,
+    m:subscribe("configuration/nodemcu/#",1,
         function(conn)
             print("Successfully subscribed to data endpoint")
         end)
 end
 
 local function handle_connection_error(errno)
---syslogclient = net.createUDPSocket()
---syslogclient:send(514, config.HOST, "<133>Hallo")
 
     if errno == mqtt.CONN_FAIL_SERVER_NOT_FOUND then
         return "There is no broker listening at the specified IP Address and Port"
@@ -81,30 +86,101 @@ local function handle_connection_error(errno)
 end
 
 
-local function subscriptionHandler(conn, topic, data) 
+local function subscriptionHandler(conn, topic, data)
  
-    if topic == "configuration/nodemcu" then
-         --dat = sjson.decode(data)
-         print(topic .. ": " .. data)
+    if topic == "configuration/nodemcu/restart" then
+        print(topic)
+        node.restart()
+    elseif topic == "configuration/nodemcu" then
+        local dat = sjson.decode(data)
+        print(topic .. ": " .. data)
 
-         --val = sjson.encode(data)
-         
-        -- print(dat)
+        for k,v in pairs(dat) do 
+            
+            if k == "repeatMeasEveryMS" then
+                print(k,v)
+                config.repeatMeasEveryMS = v
+            elseif k == "numMeas" then
+                print(k,v)
+                config.numMeas = v
+            elseif k == "HOST" then 
+                print(k,v)
+                config.HOST = v
+            elseif k == "PORT" then
+                print(k,v)
+                config.PORT = v
+            elseif k == "deepSleepUS" then
+                print(k,v)
+                config.deepSleepUS = v
+            --elseif k == "" then
+            --    print(k,v)
+            --    config. = v
+            elseif k == "mqtt_cfg" then
+                for kk,vv in pairs(v) do
+                    if kk == "password" then
+                        print(k,kk,vv)
+                        config.mqtt_cfg.password = vv
+                    elseif kk == "user" then
+                        print(k,kk,vv)
+                        config.mqtt_cfg.user = vv
+                    end
+                end
+            elseif k == "chirp" then
+                for kk,vv in pairs(v) do
+                    if kk == "scl" then
+                        print(k,kk,vv)
+                        config.chirp.scl = vv
+                    elseif kk == "sda" then
+                        print(k,kk,vv)
+                        config.chirp.sda = vv
+                    elseif kk == "addr" then
+                        print(k,kk,vv)
+                        config.chirp.addr = vv
+                    end
+                end
+            elseif k == "station_cfg" then
+                for kk,vv in pairs(v) do
+                    if kk == "pwd" then
+                        print(k,kk,vv)
+                        config.station_cfg.pwd = vv
+                    elseif kk == "save" then
+                        print(k,kk,vv)
+                        config.station_cfg.save = vv
+                    elseif kk == "ssid" then
+                        print(k,kk,vv)
+                        config.station_cfg.ssid = vv
+                    end
+                end
+            --elseif k == "" then
+            --    for kk,vv in pairs(v) do
+            --        if kk == "" then
+            --            print(k,kk,vv)
+            --            config. = vv
+            --        elseif kk == "" then
+            --            print(k,kk,vv)
+            --            config. = vv
+            --        end
+            --    end
+
+            end
+        end
+
+        setup.write_config();
+
     elseif data ~= nil then
       print(topic .. ": " .. data)
     end
-
       
 end
 
 
 local function pub_off() 
-    tmr.stop(6); -- turn auto reconnection timeour off
+    pcall( tmr.stop(6) ) -- turn auto reconnection timeour off
 end
 
 local function goDsleep() 
 
-    dat = {}
+    local dat = {}
     dat.ID = config.ID
     dat.deepSleepUS = config.deepSleepUS
     dat.timeStamp = {}
@@ -118,7 +194,6 @@ local function goDsleep()
 end
 
 local function pub_on()
-
     if not config.deepSleep then
         tmr.alarm(6, config.repeatMeasEveryMS, tmr.ALARM_AUTO, send_soilMoisture ) -- turn pub on
     else
@@ -129,7 +204,7 @@ local function pub_on()
 end
 
 local function init(con) 
-    tmr.stop(5); -- turn auto reconnection timeour off
+    pcall( tmr.stop(5) ); -- turn auto reconnection timeour off
     register_myself();  -- register to topics
     -- And then pings each 1000 milliseconds
     pub_off();
@@ -151,7 +226,10 @@ local function reconnect (client)
 end
     
 local function mqtt_start()  
-    m = mqtt.Client(config.ID, 120, config.mqtt_cfg.user, config.mqtt_cfg.password)
+    local key = secret.read_key()
+    local pass = crypto.decrypt(secret.encryption, key, config.mqtt_cfg.secret)
+
+    m = mqtt.Client(config.ID, 120, config.mqtt_cfg.user, pass)
 
     --config.ID = node.chipid()
     --m = mqtt.Client(config.ID, 120, 'pi', 'vulam,.')

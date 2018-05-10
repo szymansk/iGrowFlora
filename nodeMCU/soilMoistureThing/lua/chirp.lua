@@ -2,31 +2,31 @@
 local module = {}  
 
 -- connection to nodemcu
-id  = 0 -- always 0
+local id  = 0 -- always 0
 
 -- chirp! registers
-reg_moisture = 0
-reg_temp     = 5
+local reg_moisture = 0
+local reg_temp     = 5
 
 -- commands
-cmd_reset   = 6
+local cmd_reset   = 6
 
 function module.setup(sda, scl)
     -- initialize i2c, set pin1 as sda, set pin2 as scl
     print("setting up i2c for chirp!")
     print("sda: "..sda.." scl: "..scl)
-    speed = i2c.setup(id, sda, scl, i2c.SLOW)
+    local speed = i2c.setup(id, sda, scl, i2c.SLOW)
     print("speed: "..speed)
 end
 
 function module.chirp_scan()
 
-    addr = 0
+    local addr = 0
 
     while addr ~= 128 do
         print("addr " .. addr)
         i2c.start(id)
-        err = i2c.address(id, addr, i2c.TRANSMITTER)
+        local err = i2c.address(id, addr, i2c.TRANSMITTER)
         i2c.stop(id)
         if not err then
             print("addr " .. addr .. ": NACK")
@@ -43,7 +43,7 @@ end
 -- user defined function: read from reg_addr content of dev_addr
 function read_reg(dev_addr, reg_addr, len)
     i2c.start(id)
-    err = i2c.address(id, dev_addr, i2c.TRANSMITTER)
+    local err = i2c.address(id, dev_addr, i2c.TRANSMITTER)
     if not err then
         print("chirp NAK")
         return -1
@@ -60,7 +60,7 @@ function read_reg(dev_addr, reg_addr, len)
         print("chirp cannot read")
         return -1
     end
-    c = i2c.read(id, len)
+    local c = i2c.read(id, len)
     i2c.stop(id)
     --print("read: ".. c .. " " .. string.len(c))
     return c
@@ -72,12 +72,11 @@ function write_val(dev_addr, val)
     i2c.address(id, dev_addr, i2c.TRANSMITTER)
     i2c.write(id, val)
     i2c.stop(id)
-    return c
 end
 -- To read soil moisture, read 2 bytes from register 0
 function module.read_moisture() 
-    val = read_reg(config.chirp.addr, reg_moisture, 2)
-    erg = string.byte(val,2) + string.byte(val,1)*256
+    local val = read_reg(config.chirp.addr, reg_moisture, 2)
+    local erg = string.byte(val,2) + string.byte(val,1)*256
     return erg
 end
 
@@ -89,8 +88,8 @@ end
 
 --To read temperature, read 2 bytes from register 5
 function module.read_temperature()
-    val = read_reg(config.chirp.addr, reg_temp, 2)
-    erg = string.byte(val,2) + string.byte(val,1)*256
+    local val = read_reg(config.chirp.addr, reg_temp, 2)
+    local erg = string.byte(val,2) + string.byte(val,1)*256
     return erg
 end
 

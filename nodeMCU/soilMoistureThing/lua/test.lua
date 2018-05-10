@@ -1,7 +1,9 @@
 -- file : init.lua
-app = require("valve_application")  
+app = require("application")  
 config = require("config")  
+chirp = require("chirp")
 setup = require("setup")
+secret = require("secret")
 
 setup.start()  
 

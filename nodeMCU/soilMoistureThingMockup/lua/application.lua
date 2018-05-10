@@ -13,12 +13,12 @@ mqtt_data.sensorReadings = {}
 
 -- Sends a simple ping to the broker
 local function send_ping()  
-    m:publish(config.ENDPOINT .. "ping","id=" .. config.ID,0,0)
+    m:publish(config.ENDPOINT .. "ping","id=" .. node.chipid(),0,0)
 end
 
 -- Sends a soil moisture value to the broker
 local function send_soilMoisture() 
-    mqtt_data.ID = config.ID;
+    mqtt_data.ID = node.chipid();
 
     num_meas = config.numMeas --todo make configurable
     mqtt_data.sensorReadings.soilMoisture = 0
@@ -38,7 +38,7 @@ local function send_soilMoisture()
     
     dat = sjson.encode(mqtt_data);    
     print(dat)
-    m:publish(config.ENDPOINT .. "soilMoisture/" .. config.ID, dat,0,0)
+    m:publish(config.ENDPOINT .. "soilMoisture/" .. node.chipid(), dat,0,0)
 end
 
 -- Sends my id to the broker for registration
@@ -103,7 +103,7 @@ end
 local function goDsleep() 
 
     dat = {}
-    dat.ID = config.ID
+    dat.ID = node.chipid()
     dat.deepSleepUS = config.deepSleepUS
     dat.timeStamp = {}
     dat.timeStamp.sec = 0
@@ -135,6 +135,7 @@ local function init(con)
 end
 
 local function reconnect (client)
+    print("connecting to: " .. config.HOST .. ":" .. config.PORT)
     pub_off(); -- turn pub off
     client:close();
     client:connect(config.HOST, config.PORT, 0, 0, 
@@ -149,18 +150,20 @@ local function reconnect (client)
 end
     
 local function mqtt_start()  
-    m = mqtt.Client(config.ID, 120)
+    m = mqtt.Client(node.chipid(), 120)
     -- register message callback beforehand
     m:on("message", subscriptionHandler)    
     m:on("offline", reconnect)
 
     -- Connect to broker
-   m:connect(config.HOST, config.PORT, 0, 0, 
-        init,
-        function(client, reason)
-            print("no connection to with reason " .. handle_connection_error(reason));
-            reconnect(client); -- auto reconnect
-        end) 
+    reconnect(m)
+    -- m:connect(config.HOST, config.PORT, 0, 0, 
+    --    init,
+    --    function(client, reason)
+    --        print("no connection to with reason " .. handle_connection_error(reason));
+    --        reconnect(m); -- auto reconnect
+    --    end)
+     
 end
 
 function module.start()  

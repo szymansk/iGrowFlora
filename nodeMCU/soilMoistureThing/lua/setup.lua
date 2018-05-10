@@ -10,7 +10,7 @@ local function SNTP_start()
         function(sec, usec, server, info)
             rtctime.set(sec, usec);
             
-            tm = rtctime.epoch2cal(rtctime.get())
+            local tm = rtctime.epoch2cal(rtctime.get())
             print('SNTP sync', server)
             print(string.format("UTC: %04d/%02d/%02d %02d:%02d:%02d", tm["year"], tm["mon"], tm["day"], tm["hour"], tm["min"], tm["sec"]))
             
@@ -31,7 +31,7 @@ local function wifi_wait_ip()
     print("\n====================================")
     print("ESP8266 mode is: " .. wifi.getmode())
     print("MAC address is: " .. wifi.ap.getmac())
-    print("IP is "..wifi.sta.getip())
+    print("IP is ".. wifi.sta.getip())
     print("====================================")
 
     print("Configuring SNTP and RTC:");
@@ -43,10 +43,13 @@ local function wifi_start(list_aps)
     if list_aps then
         for key,value in pairs(list_aps) do
             if config.station_cfg.ssid == key then
+
+                local sec_key = secret.read_key()
+                config.station_cfg.pwd = crypto.decrypt(secret.encryption, sec_key, config.station_cfg.secret)
                 wifi.sta.config(config.station_cfg)
+                config.station_cfg.pwd = ""
                 wifi.setmode(wifi.STATION);
-                --wifi.sta.config(key,config.SSID[key])
-                --wifi.sta.connect()
+                
                 print("Connecting to " .. key .. " ... ")
                 --config.SSID = nil  -- can save memory
                 tmr.alarm(1, 2500, 1, wifi_wait_ip)
@@ -67,47 +70,78 @@ local function adc_start()
 end
 
 function module.read_config()
-    files = file.list()
-    if files["config.json"] then
+    local files = file.list()
+    if files[config.config_file] then
         print("Config file exists")
     else
         print("Config file does NOT exist")
         return nil        
     end
-    config_file = file.open("config.json","r")
-    conf = config_file.read()
+    local config_file = file.open(config.config_file,"r")
+    local conf = config_file.read()
 
     print(conf)
-
-    var = sjson.decode(conf)
-    config_file.close()
+    if (conf == nil) then
+        print ("cannot read config file")
+        return nil
+    end
+    local var = sjson.decode(conf)
+    local config_file.close()
     
     return var
 
 end
 
 function module.write_config()
-    files = file.list()
+    local files = file.list()
     if files[config.config_file] then
-        print("Config file exists")
+        print("Config file exists")   
     else
-        print("Config file does NOT exist")
-        return -1        
+        print("Creating config file")
     end
 
-    conf_file = file.open(config.config_file, "w+")
-
+    print("writing config to file")
+    local conf_file = file.open(config.config_file, "w+")
     conf_file.write(string.gsub(sjson.encode(config),",",",\n"))
-
     conf_file.close()
+    return 0
     
 end
 
 function module.start()  
-  val = module.read_config();
+  local val = module.read_config();
   if val ~= nil then
     config = val
+  else
+    module.write_config();
   end
+
+  -- set chipid
+  module.ID = node.chipid()
+
+    ------encrypt plain password------
+    if (config.mqtt_cfg.password ~= "" ) then
+        print("replace mqtt pass")
+        secret.key = secret.read_key()
+        config.mqtt_cfg.secret = crypto.encrypt(secret.encryption, secret.key, config.mqtt_cfg.password)
+    
+        local pass = crypto.decrypt(secret.encryption, secret.key, config.mqtt_cfg.secret)
+        print("encrypted " .. config.mqtt_cfg.secret .. " : " .. pass)
+        config.mqtt_cfg.password = ""
+        module.write_config();
+    end
+    
+    if (config.station_cfg.pwd ~= "" ) then
+        print("replace wifi pass ")
+        secret.key = secret.read_key()
+        config.station_cfg.secret = crypto.encrypt(secret.encryption, secret.key, config.station_cfg.pwd)
+    
+        local pass = crypto.decrypt(secret.encryption, secret.key, config.station_cfg.secret)
+        print("encrypted " .. config.station_cfg.secret .. " : " .. pass)
+        config.station_cfg.pwd = ""
+        module.write_config();
+    end
+    ------------
 
   print("Configuring Wifi ...");
   wifi.setmode(wifi.STATION);

@@ -2,9 +2,10 @@
 -- keep track on all needed modules
 -- 
 -- adc
--- bmp085
+-- crypto
 -- file
 -- gpio
+-- i2c
 -- mqtt
 -- net
 -- node
@@ -12,8 +13,8 @@
 -- rtcmem
 -- rtctime
 -- sjson
+-- SNTP
 -- tmr
 -- uart
 -- wifi
 -- tls
--- SNTP
