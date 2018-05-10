@@ -86,8 +86,8 @@ function module.read_config()
         return nil
     end
     local var = sjson.decode(conf)
-    local config_file.close()
-    
+    config_file.close()
+    collectgarbage()
     return var
 
 end
@@ -104,20 +104,17 @@ function module.write_config()
     local conf_file = file.open(config.config_file, "w+")
     conf_file.write(string.gsub(sjson.encode(config),",",",\n"))
     conf_file.close()
-    return 0
+    collectgarbage()
     
 end
 
 function module.start()  
-  local val = module.read_config();
-  if val ~= nil then
-    config = val
-  else
-    module.write_config();
-  end
-
-  -- set chipid
-  module.ID = node.chipid()
+    local val = module.read_config();
+    if val ~= nil then
+        config = val
+    else
+        module.write_config();
+    end
 
     ------encrypt plain password------
     if (config.mqtt_cfg.password ~= "" ) then
@@ -143,12 +140,19 @@ function module.start()
     end
     ------------
 
-  print("Configuring Wifi ...");
-  wifi.setmode(wifi.STATION);
-  wifi.sta.getap(wifi_start);
-  print("Configuring adc as battery monitor...");
-  adc_start();
-  chirp.setup(config.chirp.sda, config.chirp.scl)
+    -- set chipid
+    if (config.ID ~= node.chipid()) then
+        config.ID = node.chipid()
+        module.write_config()
+        print("renew ID to " .. config.ID )
+    end
+
+    print("Configuring Wifi ...");
+    wifi.setmode(wifi.STATION);
+    wifi.sta.getap(wifi_start);
+    print("Configuring adc as battery monitor...");
+    adc_start();
+    chirp.setup(config.chirp.sda, config.chirp.scl)
 end
 
 return module  
