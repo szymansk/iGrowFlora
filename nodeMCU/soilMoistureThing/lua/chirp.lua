@@ -76,6 +76,9 @@ end
 -- To read soil moisture, read 2 bytes from register 0
 function module.read_moisture() 
     local val = read_reg(config.chirp.addr, reg_moisture, 2)
+    if val == -1 then
+        return -1;
+    end
     local erg = string.byte(val,2) + string.byte(val,1)*256
     return erg
 end
@@ -89,6 +92,9 @@ end
 --To read temperature, read 2 bytes from register 5
 function module.read_temperature()
     local val = read_reg(config.chirp.addr, reg_temp, 2)
+    if val == -1 then
+        return -1;
+    end
     local erg = string.byte(val,2) + string.byte(val,1)*256
     return erg
 end

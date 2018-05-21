@@ -79,14 +79,16 @@ function module.read_config()
     end
     local config_file = file.open(config.config_file,"r")
     local conf = config_file.read()
-
+    config_file.close()
+    collectgarbage()
+    
     print(conf)
     if (conf == nil) then
         print ("cannot read config file")
         return nil
     end
     local var = sjson.decode(conf)
-    config_file.close()
+
     collectgarbage()
     return var
 

@@ -30,9 +30,13 @@ local function send_soilMoisture()
         moist = chirp.read_moisture()
         temp = chirp.read_temperature()
         volt = adc.readvdd33()
-        if ((moist == -1) or (temp == -1)) then i2cError = true end
-        mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture + moist
-        mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature + temp
+        print(moist .. " " .. temp)
+        if ((moist == -1) or (temp == -1)) then 
+            i2cError = true
+        else
+            mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture + moist
+            mqtt_data.sensorReadings.temperature  = mqtt_data.sensorReadings.temperature + temp
+        end
         mqtt_data.voltage                     = mqtt_data.voltage + volt               
     end
     mqtt_data.sensorReadings.soilMoisture = mqtt_data.sensorReadings.soilMoisture/num_meas;
@@ -40,10 +44,18 @@ local function send_soilMoisture()
     mqtt_data.voltage                     = mqtt_data.voltage/num_meas;
             
     mqtt_data.timeStamp.sec, mqtt_data.timeStamp.usec = rtctime.get();
-    
-    local dat = sjson.encode(mqtt_data);    
-    print(dat)
-    if (i2cError == false) then
+
+    if (i2cError == true) then
+        local mqtt_error = {}
+        mqtt_error.ID = config.ID
+        mqtt_error.voltage = mqtt_data.voltage
+        mqtt_error.error = "I2C error"
+        local dat = sjson.encode(mqtt_error);    
+        print(dat)
+        m:publish(config.ENDPOINT .. "soilMoisture/" .. config.ID, dat,0,0)
+    else
+        local dat = sjson.encode(mqtt_data);    
+        print(dat)
         m:publish(config.ENDPOINT .. "soilMoisture/" .. config.ID, dat,0,0)
     end
 end
@@ -71,7 +83,7 @@ local function handle_connection_error(errno)
     elseif errno ==mqtt.CONNACK_ACCEPTED then
         return "No errors. Note: This will not trigger a failure callback."
     elseif errno ==mqtt.CONNACK_REFUSED_PROTOCOL_VER then
-        return " The broker is not a 3.1.1 MQTT broker."
+        return "The broker is not a 3.1.1 MQTT broker."
     elseif errno ==mqtt.CONNACK_REFUSED_ID_REJECTED then
         return "The specified ClientID was rejected by the broker. (See mqtt.Client())"
     elseif errno ==mqtt.CONNACK_REFUSED_SERVER_UNAVAILABLE then
@@ -89,114 +101,144 @@ end
 local function subscriptionHandler(conn, topic, data)
  
     if topic == "configuration/nodemcu/restart" then
-        print(topic)
-        node.restart()
+        local dat = sjson.decode(data)
+        print(topic .. ": " .. data)
+        if dat.ID == config.ID then
+            node.restart()
+        end --if
+    elseif topic == "configuration/nodemcu/info" then
+        local dat = sjson.decode(data)
+        print(topic .. ": " .. data)
+        if dat.ID == config.ID then
+            m:publish(config.ENDPOINT .. "soilMoisture/info", 
+            sjson.encode(config),
+            0,
+            0)
+        end --if
     elseif topic == "configuration/nodemcu" then
         local dat = sjson.decode(data)
         print(topic .. ": " .. data)
-
-        for k,v in pairs(dat) do 
-            
-            if k == "repeatMeasEveryMS" then
-                print(k,v)
-                config.repeatMeasEveryMS = v
-            elseif k == "numMeas" then
-                print(k,v)
-                config.numMeas = v
-            elseif k == "HOST" then 
-                print(k,v)
-                config.HOST = v
-            elseif k == "PORT" then
-                print(k,v)
-                config.PORT = v
-            elseif k == "deepSleepUS" then
-                print(k,v)
-                config.deepSleepUS = v
-            --elseif k == "" then
-            --    print(k,v)
-            --    config. = v
-            elseif k == "mqtt_cfg" then
-                for kk,vv in pairs(v) do
-                    if kk == "password" then
-                        print(k,kk,vv)
-                        config.mqtt_cfg.password = vv
-                    elseif kk == "user" then
-                        print(k,kk,vv)
-                        config.mqtt_cfg.user = vv
+        if dat.ID == config.ID then
+            for k,v in pairs(dat) do 
+                
+                if k == "repeatMeasEveryMS" then
+                    print(k,v)
+                    config.repeatMeasEveryMS = v
+                elseif k == "numMeas" then
+                    print(k,v)
+                    config.numMeas = v
+                elseif k == "HOST" then 
+                    print(k,v)
+                    config.HOST = v
+                elseif k == "PORT" then
+                    print(k,v)
+                    config.PORT = v
+                elseif k == "deepSleepUS" then
+                    print(k,v)
+                    config.deepSleepUS = v
+                elseif k == "deepSleep" then
+                    print(k,v)
+                    config.deepSleep = v
+                --elseif k == "" then
+                --    print(k,v)
+                --    config. = v
+                elseif k == "mqtt_cfg" then
+                    for kk,vv in pairs(v) do
+                        if kk == "password" then
+                            print(k,kk,vv)
+                            config.mqtt_cfg.password = vv
+                        elseif kk == "user" then
+                            print(k,kk,vv)
+                            config.mqtt_cfg.user = vv
+                        end
                     end
-                end
-            elseif k == "chirp" then
-                for kk,vv in pairs(v) do
-                    if kk == "scl" then
-                        print(k,kk,vv)
-                        config.chirp.scl = vv
-                    elseif kk == "sda" then
-                        print(k,kk,vv)
-                        config.chirp.sda = vv
-                    elseif kk == "addr" then
-                        print(k,kk,vv)
-                        config.chirp.addr = vv
+                elseif k == "chirp" then
+                    for kk,vv in pairs(v) do
+                        if kk == "scl" then
+                            print(k,kk,vv)
+                            config.chirp.scl = vv
+                        elseif kk == "sda" then
+                            print(k,kk,vv)
+                            config.chirp.sda = vv
+                        elseif kk == "addr" then
+                            print(k,kk,vv)
+                            config.chirp.addr = vv
+                        end
                     end
-                end
-            elseif k == "station_cfg" then
-                for kk,vv in pairs(v) do
-                    if kk == "pwd" then
-                        print(k,kk,vv)
-                        config.station_cfg.pwd = vv
-                    elseif kk == "save" then
-                        print(k,kk,vv)
-                        config.station_cfg.save = vv
-                    elseif kk == "ssid" then
-                        print(k,kk,vv)
-                        config.station_cfg.ssid = vv
+                elseif k == "station_cfg" then
+                    for kk,vv in pairs(v) do
+                        if kk == "pwd" then
+                            print(k,kk,vv)
+                            config.station_cfg.pwd = vv
+                        elseif kk == "save" then
+                            print(k,kk,vv)
+                            config.station_cfg.save = vv
+                        elseif kk == "ssid" then
+                            print(k,kk,vv)
+                            config.station_cfg.ssid = vv
+                        end
                     end
-                end
-            --elseif k == "" then
-            --    for kk,vv in pairs(v) do
-            --        if kk == "" then
-            --            print(k,kk,vv)
-            --            config. = vv
-            --        elseif kk == "" then
-            --            print(k,kk,vv)
-            --            config. = vv
-            --        end
-            --    end
+                --elseif k == "" then
+                --    for kk,vv in pairs(v) do
+                --        if kk == "" then
+                --            print(k,kk,vv)
+                --            config. = vv
+                --        elseif kk == "" then
+                --            print(k,kk,vv)
+                --            config. = vv
+                --        end
+                --    end
 
-            end
-        end
+                end --elseif
+            end --for
 
-        setup.write_config();
-
+            setup.write_config();
+        end --if ID
     elseif data ~= nil then
       print(topic .. ": " .. data)
-    end
+    end --elseif
       
-end
+end --function
 
 
 local function pub_off() 
     pcall( tmr.stop(6) ) -- turn auto reconnection timeour off
-end
+end --function
 
 local function goDsleep() 
 
+    print("deepsleep")
     local dat = {}
     dat.ID = config.ID
     dat.deepSleepUS = config.deepSleepUS
     dat.timeStamp = {}
     dat.timeStamp.sec = 0
     dat.timeStamp.usec = 0
-
     dat.timeStamp.sec, dat.timeStamp.usec = rtctime.get();
+    m:publish(config.ENDPOINT .. "soilMoisture/deepSleep", 
+        sjson.encode(dat),
+        0,
+        0, 
+        function() rtctime.dsleep(config.deepSleepUS) end)
     
-    m:publish(config.ENDPOINT .. "soilMoisture/deepSleep", sjson.encode(dat),0,0)
-    rtctime.dsleep(config.deepSleepUS)
+    --rtctime.dsleep(config.deepSleepUS)
 end
 
 local function pub_on()
+    local dat = {}
+    dat.ID = config.ID
+    dat.repeatMeasEveryMS = config.repeatMeasEveryMS
+    dat.deepSleep = config.deepSleep
+    dat.timeStamp = {}
+    dat.timeStamp.sec = 0
+    dat.timeStamp.usec = 0
+    dat.timeStamp.sec, dat.timeStamp.usec = rtctime.get();
+    
     if not config.deepSleep then
+        m:publish(config.ENDPOINT .. "info", sjson.encode(dat),0,0)
         tmr.alarm(6, config.repeatMeasEveryMS, tmr.ALARM_AUTO, send_soilMoisture ) -- turn pub on
     else
+        m:publish(config.ENDPOINT .. "info", sjson.encode(dat),0,0)
         tmr.alarm(6, config.repeatMeasEveryMS, tmr.ALARM_AUTO, send_soilMoisture ) -- turn pub on
        --send_soilMoisture()
         tmr.alarm(5, config.repeatMeasEveryMS * config.measBeforeDS + config.repeatMeasEveryMS/2, tmr.ALARM_SINGLE, goDsleep ) -- turn pub on
@@ -224,6 +266,10 @@ local function reconnect (client)
                 end)
          end)
 end
+
+local function connected(client) 
+    m:publish(config.ENDPOINT .. "info/" .. config.ID , "{\"connected\":true}",1,0)   
+end
     
 local function mqtt_start()  
     local key = secret.read_key()
@@ -236,6 +282,7 @@ local function mqtt_start()
     -- register message callback beforehand
     m:on("message", subscriptionHandler)    
     m:on("offline", reconnect)
+    m:on("connect", connected)
 
 
     print("====================================");
